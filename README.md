@@ -354,7 +354,7 @@ bokeh.io.show(p)
 ```
 
 
-<img src="images/output_09.png" width="400px">
+<img src="images/output_09.png" width="500px">
 
 
 ## ECDFs
@@ -472,7 +472,7 @@ bokeh.io.show(p)
 ```
 
 
-<img src="images/output_14.png" width="400px">
+<img src="images/output_14.png" width="500px">
 
 
 
@@ -497,7 +497,7 @@ bokeh.io.show(p)
 ```
 
 
-<img src="images/output_15.png" width="400px">
+<img src="images/output_15.png" width="500px">
 
 
 
