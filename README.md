@@ -13,7 +13,7 @@ A utility to use Bokeh to generate plots where one of more variables is categori
 
 There are all relatively minor fixes for HoloViews, which will likely have this functionality in the near future.
 
-Nonetheless, ECDFs and horizontal jitter plots are important visualizations, and this module provides a high-level way to render them using Bokeh.
+Nonetheless, ECDFs and horizontal strip plots are important visualizations, and this module provides a high-level way to render them using Bokeh.
 
 ## Installation
 
