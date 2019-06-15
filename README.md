@@ -8,7 +8,7 @@ A utility to use Bokeh to generate plots where one of more variables is categori
 [Bokeh](https://bokeh.pydata.org/) is a powerful Python-based plotting library. [HoloViews](https://holoviews.org/) is an excellent high-level plotting package that can use Bokeh to render plots. I suspect that most of the functionality in this module will eventually be incorporated into HoloViews. This module exists because HoloViews lacks some important functionality.
 
 - It does not natively make ECDFs.
-- It's definition of a box plot is non-canonical ([my fault](https://github.com/pyviz/holoviews/pull/1926), but will soon be [fixed](https://github.com/pyviz/holoviews/pull/3755)).
+- Its definition of a box plot is non-canonical ([my fault](https://github.com/pyviz/holoviews/pull/1926), but will soon be [fixed](https://github.com/pyviz/holoviews/pull/3755)).
 - It has a [bug when making horizontal strip plots](https://github.com/pyviz/holoviews/issues/3748).
 
 There are all relatively minor fixes for HoloViews, which will likely have this functionality in the near future.
