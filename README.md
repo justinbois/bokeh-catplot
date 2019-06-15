@@ -208,7 +208,8 @@ bokeh.io.show(p)
 ```
 
 
-![horizontal box plot](images/output_03.png)
+<img src="images/output_03.png" width="400px">
+
 
 
 
@@ -229,7 +230,8 @@ p = bokeh_catplot.box(
 bokeh.io.show(p)
 ```
 
-![vertical box plot](images/output_04.png)
+<img src="images/output_04.png" width="400px">
+
 
 
 We can have multiple categories and specify a custom palette.
@@ -253,7 +255,8 @@ p.yaxis.axis_label_text_font_style = 'bold'
 bokeh.io.show(p)
 ```
 
-![box plot with two cats](images/output_05.png)
+<img src="images/output_05.png" width="400px">
+
 
 
 
@@ -274,7 +277,8 @@ p = bokeh_catplot.strip(
 bokeh.io.show(p)
 ```
 
-![strip plot with dash marks](images/output_06.png)
+<img src="images/output_06.png" width="400px">
+
 
 
 The problem with strip plots is that they can have trouble with overlapping data points. A common approach to deal with this is to "jitter," or place the glyphs with small random displacements along the categorical axis. I do that here, allowing for hover tools that give more information about the respective data points.
@@ -293,7 +297,8 @@ p = bokeh_catplot.strip(
 bokeh.io.show(p)
 ```
 
-![strip plot with jitter](images/output_07.png)
+<img src="images/output_07.png" width="400px">
+
 
 
 ### Strip-box plots
@@ -327,7 +332,8 @@ p = bokeh_catplot.strip(
 bokeh.io.show(p)
 ```
 
-![jitter box](images/output_08.png)
+<img src="images/output_08.png" width="400px">
+
 
 
 ## Histograms
@@ -348,10 +354,7 @@ bokeh.io.show(p)
 ```
 
 
-
-
-![density histograms](images/output_09.png)
-
+<img src="images/output_09.png" width="400px">
 
 
 ## ECDFs
@@ -374,8 +377,7 @@ p = bokeh_catplot.ecdf(
 bokeh.io.show(p)
 ```
 
-
-![formal ECDF](images/output_10.png)
+<img src="images/output_10.png" width="400px">
 
 We can also display empirical complementary cumulative distribution functions (ECCDFs) using the `complementary` kwarg.
 
@@ -394,7 +396,8 @@ bokeh.io.show(p)
 ```
 
 
-![formal ECCDF](images/output_11.png)
+<img src="images/output_11.png" width="400px">
+
 
 
 Instead of plotting a separate ECDF for each category, we can put all of the categories together on one ECDF and color the points by the categorical variable by using the `kind='colored'` kwarg.
@@ -412,7 +415,8 @@ bokeh.io.show(p)
 ```
 
 
-![colored ECCDF](images/output_12.png)
+<img src="images/output_12.png" width="400px">
+
 
 
 We can also display confidence intervals for the ECDFs acquired by bootstrapping using the `conf_int` kwarg.
@@ -431,7 +435,8 @@ bokeh.io.show(p)
 ```
 
 
-![ECDFs with confidence intervals](images/output_13.png)
+<img src="images/output_13.png" width="400px">
+
 
 
 ## Why no stacked bar graphs?
@@ -467,7 +472,8 @@ bokeh.io.show(p)
 ```
 
 
-![stacked bar graph](images/output_14.png)
+<img src="images/output_14.png" width="400px">
+
 
 
 
@@ -491,7 +497,8 @@ bokeh.io.show(p)
 ```
 
 
-![stacked bar graph](images/output_15.png)
+<img src="images/output_15.png" width="400px">
+
 
 
 
