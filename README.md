@@ -45,22 +45,7 @@ df.head()
 ```
 
 
-
-
 <div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -187,9 +172,9 @@ bokeh.io.show(
 )
 ```
 
-![default box and strip plots](images/output_01.png)
+<img src="images/output_01.png" width="400px">
 
-![default histogram and ECDF plots](images/output_02.png)
+<img src="images/output_02.png" width="400px">
 
 
 
