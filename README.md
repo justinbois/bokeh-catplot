@@ -462,7 +462,7 @@ p.vbar_stack(
     width=0.5, 
     x='origin', 
     color=["#4e79a7", "#f28e2b", "#e15759", "#76b7b2", "#59a14f"], 
-    source=my_df,
+    source=count_df,
     legend=[bokeh.core.properties.value(s) for s in stackers]
 )
 p.legend.orientation = 'horizontal'
