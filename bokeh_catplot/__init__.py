@@ -10,7 +10,7 @@ warnings.filterwarnings(
     "always", category=DeprecationWarning, module="^{}\.".format(re.escape(__name__))
 )
 
-from .catplot import *
+from .cat import *
 from .dist import *
 
 
