@@ -280,7 +280,7 @@ def histogram(
     order=None,
     show_legend=None,
     p=None,
-    bins="sqrt",
+    bins="freedman-diaconis",
     density=False,
     kind="step_filled",
     click_policy="hide",
@@ -314,7 +314,7 @@ def histogram(
         figure `p`.
     show_legend : bool, default False
         If True, display legend.
-    bins : int, array_like, or str, default 'sqrt'
+    bins : int, array_like, or str, default 'freedman-diaconis'
         If int or array_like, setting for `bins` kwarg to be passed to
         `np.histogram()`. If 'exact', then each unique value in the
         data gets its own bin. If 'integer', then integer data is
@@ -663,13 +663,8 @@ def _compute_histogram(data, bins, density):
     if bins == "sqrt":
         bins = int(np.ceil(np.sqrt(len(data))))
     elif bins == "freedman-diaconis":
-        bins = int(
-            np.ceil(
-                2
-                * (np.percentile(data, 75) - np.percentile(data, 25))
-                / np.cbrt(len(data))
-            )
-        )
+        h = 2 * (np.percentile(data, 75) - np.percentile(data, 25)) / np.cbrt(len(data))
+        bins = int(np.ceil((data.max() - data.min()) / h))
 
     f, e = np.histogram(data, bins=bins, density=density)
     e0 = np.empty(2 * len(e))
