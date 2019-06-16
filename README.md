@@ -1,7 +1,7 @@
 
 # Bokeh-catplot
 
-A utility to use Bokeh to generate plots where one of more variables is categorical. It generates box plots, jitter plots, ECDFs, and scatter plots.
+A utility to use Bokeh to generate plots where one of more variables is categorical. It generates box plots, jitter plots, histograms, and ECDFs.
 
 ## Motivation
 
