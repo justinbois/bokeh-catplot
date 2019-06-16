@@ -81,7 +81,7 @@ def strip(
     marker : str, default 'circle'
         Name of marker to be used in the plot (ignored if `formal` is
         False). Must be one of['asterisk', 'circle', 'circle_cross',
-        'circlex', 'cross', 'dash', 'diamond', 'diamond_cross', 'hex',
+        'circle_x', 'cross', 'dash', 'diamond', 'diamond_cross', 'hex',
         'inverted_triangle', 'square', 'square_cross', 'square_x',
         'triangle', 'x']
     jitter : bool, default False
@@ -269,7 +269,7 @@ def box(
     outlier_marker : str, default 'circle'
         Name of marker to be used in the plot (ignored if `formal` is
         False). Must be one of['asterisk', 'circle', 'circle_cross',
-        'circlex', 'cross', 'dash', 'diamond', 'diamond_cross', 'hex',
+        'circle_x', 'cross', 'dash', 'diamond', 'diamond_cross', 'hex',
         'inverted_triangle', 'square', 'square_cross', 'square_x',
         'triangle', 'x']
     box_kwargs : dict, default None
