@@ -133,7 +133,7 @@ def ecdf(
         conf_int
         and "x_axis_type" in kwargs
         and kwargs["x_axis_type"] == "log"
-        and (df[val] <= 0).any()
+        and (data[val] <= 0).any()
     ):
         warnings.warn(
             "Cannot draw confidence intervals with a x-axis on a log scale because some values are negative. Any negative values will be omitted from the ECDF."
