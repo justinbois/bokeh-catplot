@@ -2,7 +2,6 @@ import warnings
 
 import numpy as np
 import pandas as pd
-import numba
 
 import bokeh.models
 import bokeh.palettes
@@ -221,12 +220,14 @@ def box(
     val_axis_type=None,
     box_width=0.4,
     whisker_caps=False,
-    display_outliers=True,
+    display_points=True,
     outlier_marker="circle",
+    min_data=5,
     box_kwargs=None,
     median_kwargs=None,
     whisker_kwargs=None,
     outlier_kwargs=None,
+    display_outliers=None,
     **kwargs,
 ):
     """
@@ -263,15 +264,21 @@ def box(
         entire space allotted.
     whisker_caps : bool, default False
         If True, put caps on whiskers. If False, omit caps.
-    display_outliers : bool, default True
-        If True, display outliers, otherwise suppress them. This should
-        only be False when making an overlay with a strip plot.
+    display_points : bool, default True
+        If True, display outliers and any other points that arise from
+        categories with fewer than `min_data` data points; otherwise 
+        suppress them. This should only be False when making an overlay 
+        with a strip plot.
     outlier_marker : str, default 'circle'
         Name of marker to be used in the plot (ignored if `formal` is
         False). Must be one of['asterisk', 'circle', 'circle_cross',
         'circle_x', 'cross', 'dash', 'diamond', 'diamond_cross', 'hex',
         'inverted_triangle', 'square', 'square_cross', 'square_x',
         'triangle', 'x']
+    min_data : int, default 5
+        Minimum number of data points in a given category in order to
+        make a box and whisker. Otherwise, individual data points are
+        plotted as in a strip plot.
     box_kwargs : dict, default None
         A dictionary of kwargs to be passed into `p.hbar()` or
         `p.vbar()` when constructing the boxes for the box plot.
@@ -304,6 +311,11 @@ def box(
        between the ends of the whiskers are considered outliers and are
        plotted as individual points.
     """
+    if display_outliers is not None:
+        warnings.warn(f'`display_outliers` is deprecated. Use `display_points`. Using `display_points={display_outliers} for this function call.', DeprecationWarning)
+        display_points = display_outliers
+
+
     data, cats, _ = utils._data_cats(data, cats, False)
 
     cats, cols = utils._check_cat_input(
@@ -359,7 +371,7 @@ def box(
 
     marker_fun = utils._get_marker(p, outlier_marker)
 
-    source_box, source_outliers = _box_source(data, cats, val, cols)
+    source_box, source_outliers = _box_source(data, cats, val, cols, min_data)
 
     if "color" in outlier_kwargs:
         if "line_color" in outlier_kwargs or "fill_color" in outlier_kwargs:
@@ -437,7 +449,7 @@ def box(
             height=box_width,
             **median_kwargs,
         )
-        if display_outliers:
+        if display_points:
             marker_fun(source=source_outliers, y="cat", x=val, **outlier_kwargs)
         p.ygrid.grid_line_color = None
     else:
@@ -490,7 +502,7 @@ def box(
             width=box_width,
             **median_kwargs,
         )
-        if display_outliers:
+        if display_points:
             marker_fun(source=source_outliers, x="cat", y=val, **outlier_kwargs)
         p.xgrid.grid_line_color = None
 
@@ -585,32 +597,38 @@ def _cat_source(df, cats, cols, color_column):
     return bokeh.models.ColumnDataSource(source_dict)
 
 
-def _outliers(data):
-    bottom, middle, top = np.percentile(data, [25, 50, 75])
-    iqr = top - bottom
-    outliers = data[(data > top + 1.5 * iqr) | (data < bottom - 1.5 * iqr)]
-    return outliers
+def _outliers(data, min_data):
+    if len(data) >= min_data:
+        bottom, middle, top = np.percentile(data, [25, 50, 75])
+        iqr = top - bottom
+        outliers = data[(data > top + 1.5 * iqr) | (data < bottom - 1.5 * iqr)]
+        return outliers
+    else:
+        return data
 
 
-def _box_and_whisker(data):
-    middle = data.median()
-    bottom = data.quantile(0.25)
-    top = data.quantile(0.75)
-    iqr = top - bottom
-    top_whisker = data[data <= top + 1.5 * iqr].max()
-    bottom_whisker = data[data >= bottom - 1.5 * iqr].min()
-    return pd.Series(
-        {
-            "middle": middle,
-            "bottom": bottom,
-            "top": top,
-            "top_whisker": top_whisker,
-            "bottom_whisker": bottom_whisker,
-        }
-    )
+def _box_and_whisker(data, min_data):
+    if len(data) >= min_data:
+        middle = data.median()
+        bottom = data.quantile(0.25)
+        top = data.quantile(0.75)
+        iqr = top - bottom
+        top_whisker = data[data <= top + 1.5 * iqr].max()
+        bottom_whisker = data[data >= bottom - 1.5 * iqr].min()
+        return pd.Series(
+            {
+                "middle": middle,
+                "bottom": bottom,
+                "top": top,
+                "top_whisker": top_whisker,
+                "bottom_whisker": bottom_whisker,
+            }
+        )
+    else:
+        return None
 
 
-def _box_source(df, cats, val, cols):
+def _box_source(df, cats, val, cols, min_data):
     """Construct a data frame for making box plot."""
     # Need to reset index for use in slicing outliers
     df_source = df.reset_index(drop=True)
@@ -626,13 +644,13 @@ def _box_source(df, cats, val, cols):
         grouped = df_source.groupby(cats, sort=False)
 
     # Data frame for boxes and whiskers
-    df_box = grouped[val].apply(_box_and_whisker).unstack().reset_index()
+    df_box = grouped[val].apply(_box_and_whisker, min_data).unstack().reset_index()
     source_box = _cat_source(
         df_box, cats, ["middle", "bottom", "top", "top_whisker", "bottom_whisker"], None
     )
 
     # Data frame for outliers
-    df_outliers = grouped[val].apply(_outliers).reset_index(level=level)
+    df_outliers = grouped[val].apply(_outliers, min_data).reset_index(level=level)
     df_outliers[cols] = df_source.loc[df_outliers.index, cols]
     source_outliers = _cat_source(df_outliers, cats, cols, None)
 
