@@ -314,7 +314,7 @@ p = bokeh_catplot.box(
     val='mpg',
     horizontal=True,
     box_kwargs=dict(fill_color='gray', fill_alpha=0.5),
-    display_outliers=False
+    display_points=False
 )
 
 # Overlay a jitter plot
