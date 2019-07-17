@@ -36,14 +36,16 @@ def ecdf(
     tooltips=None,
     complementary=False,
     kind="collection",
-    formal=False,
+    style="dots",
     conf_int=False,
     ptiles=[2.5, 97.5],
     n_bs_reps=1000,
     click_policy="hide",
     marker="circle",
     marker_kwargs=None,
+    line_kwargs=None,
     conf_int_kwargs=None,
+    formal=False,
     **kwargs,
 ):
     """
@@ -74,7 +76,7 @@ def ecdf(
         Specification for tooltips as per Bokeh specifications. For
         example, if we want `col1` and `col2` tooltips, we can use
         `tooltips=[('label 1': '@col1'), ('label 2': '@col2')]`. Ignored
-        if `formal` is True.
+        if `style` is 'staircase'.
     complementary : bool, default False
         If True, plot the empirical complementary cumulative
         distribution function.
@@ -83,10 +85,11 @@ def ecdf(
         ECDFs coded with colors based on the categorical variables. If
         'colored', the figure is populated with a single ECDF with
         circles colored based on the categorical variables.
-    formal : bool, default False
-        If True, make a plot of a formal ECDF (staircase). If False,
-        plot the ECDF as dots located at the concave corners of the
-        formal staircase ECDF.
+    style : str, one of ['dots', 'staircase', 'formal'], default 'dots'
+        The style of ECDF to make.
+            dots: Each data point is plotted as a dot.
+            staircase: ECDF is plotted as a traditional staircase.
+            formal: Strictly adhere to the definition of an ECDF.
     conf_int : bool, default False
         If True, display a confidence interval on the ECDF.
     ptiles : list, default [2.5, 97.5]
@@ -99,14 +102,18 @@ def ecdf(
         Either 'hide', 'mute', or None; how the glyphs respond when the
         corresponding category is clicked in the legend.
     marker : str, default 'circle'
-        Name of marker to be used in the plot (ignored if `formal` is
-        False). Must be one of['asterisk', 'circle', 'circle_cross',
-        'circle_x', 'cross', 'dash', 'diamond', 'diamond_cross', 'hex',
-        'inverted_triangle', 'square', 'square_cross', 'square_x',
-        'triangle', 'x']
+        Name of marker to be used in the plot (ignored if `style` is
+        'staircase'). Must be one of['asterisk', 'circle',
+        'circle_cross', 'circle_x', 'cross', 'dash', 'diamond',
+        'diamond_cross', 'hex', 'inverted_triangle', 'square',
+        'square_cross', 'square_x', 'triangle', 'x']
     marker_kwargs : dict
-        Keyword arguments to be passed to `p.line()` if `formal`, or
-        `p.circle()`.
+        Keyword arguments to be passed to `p.circle()`.
+    line_kwargs : dict
+        Kwargs to be passed to `p.line()`, `p.ray()`, and `p.segment()`.
+    conf_int_kwargs : dict
+        kwargs to pass into patches depicting confidence intervals.
+    formal : deprecated, use `style`.
     kwargs
         Any kwargs to be passed to `bokeh.plotting.figure()` when making
         the plot.
@@ -116,6 +123,21 @@ def ecdf(
     output : bokeh.plotting.Figure instance
         Plot populated with jitter plot or box plot.
     """
+    if formal:
+        if style == "formal":
+            raise RuntimeError(
+                "`style` and `formal` kwargs in conflict. `formal` is deprecated. Use `style` instead."
+            )
+        else:
+            style = "staircase"
+            warnings.warn(
+                "`formal` is deprecated. Use `style='staircase'` instead.",
+                DeprecationWarning,
+            )
+
+    if style == "formal" and complementary:
+        raise NotImplementedError("Complementary formal ECDFs not yet implemented.")
+
     data, cats, show_legend = utils._data_cats(data, cats, show_legend)
 
     cats, cols = utils._check_cat_input(
@@ -142,6 +164,8 @@ def ecdf(
 
     if marker_kwargs is None:
         marker_kwargs = {}
+    if line_kwargs is None:
+        line_kwargs = {}
 
     y = "__ECCDF" if complementary else "__ECDF"
 
@@ -154,15 +178,11 @@ def ecdf(
     if "x_axis_label" not in kwargs:
         kwargs["x_axis_label"] = val
 
-    if marker_kwargs is None:
-        marker_kwargs = {}
-    if formal and "line_width" not in marker_kwargs:
-        marker_kwargs["line_width"] = 2
+    if style in ["formal", "staircase"] and "line_width" not in line_kwargs:
+        line_kwargs["line_width"] = 2
 
     if conf_int_kwargs is None:
         conf_int_kwargs = {}
-    if marker_kwargs is None:
-        marker_kwargs = {}
     if "fill_alpha" not in conf_int_kwargs:
         conf_int_kwargs["fill_alpha"] = 0.5
     if "line_alpha" not in conf_int_kwargs and "line_color" not in conf_int_kwargs:
@@ -170,7 +190,7 @@ def ecdf(
 
     df = data.copy()
     if kind == "collection":
-        if not formal:
+        if style == "dots":
             df[y] = df.groupby(cats)[val].transform(
                 _ecdf_y, complementary=complementary
             )
@@ -193,11 +213,11 @@ def ecdf(
     if p is None:
         p = bokeh.plotting.figure(**kwargs)
 
-    if not formal:
+    if style == "dots":
         marker_fun = utils._get_marker(p, marker)
 
     if tooltips is not None:
-        if formal:
+        if style in ["formal", "staircase"]:
             warnings.warn(
                 "Cannot have tooltips for formal ECDFs because there are not point to hover over. Omitting tooltips"
             )
@@ -221,19 +241,27 @@ def ecdf(
 
             marker_kwargs["color"] = palette[i % len(palette)]
             marker_kwargs["legend"] = g["__label"].iloc[0]
-            if formal:
+            line_kwargs["color"] = palette[i % len(palette)]
+            line_kwargs["legend"] = g["__label"].iloc[0]
+            if style == "staircase":
+                p = _staircase_ecdf(
+                    p, data=g[val], complementary=complementary, line_kwargs=line_kwargs
+                )
+            elif style == "dots":
+                marker_fun(source=g, x=val, y=y, **marker_kwargs)
+            elif style == "formal":
                 p = _formal_ecdf(
                     p,
                     data=g[val],
-                    complementary=False,
-                    conf_int_kwargs=conf_int_kwargs,
+                    complementary=complementary,
                     marker_kwargs=marker_kwargs,
+                    line_kwargs=line_kwargs,
                 )
-            else:
-                marker_fun(source=g, x=val, y=y, **marker_kwargs)
     elif kind == "colored":
-        if formal:
-            raise RuntimeError("Cannot have a formal ECDF with `kind='colored'.")
+        if style in ["formal", "staircase"]:
+            raise RuntimeError(
+                "Cannot have a formal or staircase ECDF with `kind='colored'`."
+            )
 
         if conf_int:
             if "fill_color" not in conf_int_kwargs:
@@ -452,42 +480,22 @@ def histogram(
     return p
 
 
-def _formal_ecdf(p, data, complementary=False, conf_int_kwargs={}, marker_kwargs={}):
+def _staircase_ecdf(p, data, complementary=False, line_kwargs={}):
     """
     Create a plot of an ECDF.
 
     Parameters
     ----------
-    data : array_like
-        One-dimensional array of data. Nan's are ignored.
-    fill_color : str, default 'lightgray'
-        Color of the confidence interbal. Ignored if `conf_int` is
-        False.
-    fill_alpha : float, default 1
-        Opacity of confidence interval. Ignored if `conf_int` is False.
     p : bokeh.plotting.Figure instance, or None (default)
         If None, create a new figure. Otherwise, populate the existing
         figure `p`.
-    x_axis_label : str, default None
-        Label for the x-axis. Ignored if `p` is not None.
-    y_axis_label : str, default 'ECDF' or 'ECCDF'
-        Label for the y-axis. Ignored if `p` is not None.
-    title : str, default None
-        Title of the plot. Ignored if `p` is not None.
-    plot_height : int, default 300
-        Height of plot, in pixels. Ignored if `p` is not None.
-    plot_width : int, default 450
-        Width of plot, in pixels. Ignored if `p` is not None.
+    data : array_like
+        One-dimensional array of data. Nan's are ignored.
     complementary : bool, default False
         If True, plot the empirical complementary cumulative
         distribution functon.
-    x_axis_type : str, default 'linear'
-        Either 'linear' or 'log'.
-    y_axis_type : str, default 'linear'
-        Either 'linear' or 'log'.
-    kwargs
-        Any kwargs to be passed to either p.circle or p.line, for
-        `formal` being False or True, respectively.
+    line_kwargs : dict
+        kwargs to be passed into p.line and p.ray.
 
     Returns
     -------
@@ -501,27 +509,71 @@ def _formal_ecdf(p, data, complementary=False, conf_int_kwargs={}, marker_kwargs
     x, y = _ecdf_vals(data, True, complementary)
 
     # Line of steps
-    p.line(x, y, **marker_kwargs)
+    p.line(x, y, **line_kwargs)
 
     # Rays for ends
     if complementary:
         p.ray(x[0], 1, None, np.pi, **maker_kwargs)
-        p.ray(x[-1], 0, None, 0, **marker_kwargs)
+        p.ray(x[-1], 0, None, 0, **line_kwargs)
     else:
-        p.ray(x[0], 0, None, np.pi, **marker_kwargs)
-        p.ray(x[-1], 1, None, 0, **marker_kwargs)
+        p.ray(x[0], 0, None, np.pi, **line_kwargs)
+        p.ray(x[-1], 1, None, 0, **line_kwargs)
 
     return p
 
 
-def _ecdf_vals(data, formal=False, complementary=False):
+def _formal_ecdf(p, data, complementary=False, marker_kwargs={}, line_kwargs={}):
+    """
+    Create a plot of an ECDF.
+
+    Parameters
+    ----------
+    p : bokeh.plotting.Figure instance, or None (default)
+        If None, create a new figure. Otherwise, populate the existing
+        figure `p`.
+    data : array_like
+        One-dimensional array of data. Nan's are ignored.
+    complementary : bool, default False
+        If True, plot the empirical complementary cumulative
+        distribution functon.
+    marker_kwargs : dict
+        Any kwargs to be passed to p.circle().
+    line_kwargs : dict
+        Any kwargs to be passed to p.segment() and p.ray().
+
+    Returns
+    -------
+    output : bokeh.plotting.Figure instance
+        Plot populated with ECDF.
+    """
+    # Extract data
+    data = utils._convert_data(data)
+
+    # Data points on ECDF
+    x, y = _ecdf_vals(data, complementary)
+
+    # Copy of marker kwargs for unfilled points
+    unfilled_kwargs = marker_kwargs.copy()
+    unfilled_kwargs["fill_color"] = "white"
+
+    p.segment(x[:-1], y[:-1], x[1:], y[:-1], **line_kwargs)
+    p.ray(x[0], 0, angle=np.pi, length=0, **line_kwargs)
+    p.ray(x[-1], 1, angle=0, length=0, **line_kwargs)
+    p.circle(x, y, **marker_kwargs)
+    p.circle([0], [0], **unfilled_kwargs)
+    p.circle(x[1:], y[:-1], **unfilled_kwargs)
+
+    return p
+
+
+def _ecdf_vals(data, staircase=False, complementary=False):
     """Get x, y, values of an ECDF for plotting.
     Parameters
     ----------
     data : ndarray
         One dimensional Numpy array with data.
-    formal : bool, default False
-        If True, generate x and y values for formal ECDF (staircase). If
+    staircase : bool, default False
+        If True, generate x and y values for ECDF (staircase). If
         False, generate x and y values for ECDF as dots.
     complementary : bool
         If True, return values for ECCDF.
@@ -536,8 +588,8 @@ def _ecdf_vals(data, formal=False, complementary=False):
     x = np.sort(data)
     y = np.arange(1, len(data) + 1) / len(data)
 
-    if formal:
-        x, y = _to_formal(x, y)
+    if staircase:
+        x, y = _to_staircase(x, y)
         if complementary:
             y = 1 - y
     elif complementary:
@@ -546,22 +598,22 @@ def _ecdf_vals(data, formal=False, complementary=False):
     return x, y
 
 
-def _to_formal(x, y):
+def _to_staircase(x, y):
     """Convert to formal ECDF."""
     # Set up output arrays
-    x_formal = np.empty(2 * len(x))
-    y_formal = np.empty(2 * len(x))
+    x_staircase = np.empty(2 * len(x))
+    y_staircase = np.empty(2 * len(x))
 
     # y-values for steps
-    y_formal[0] = 0
-    y_formal[1::2] = y
-    y_formal[2::2] = y[:-1]
+    y_staircase[0] = 0
+    y_staircase[1::2] = y
+    y_staircase[2::2] = y[:-1]
 
     # x- values for steps
-    x_formal[::2] = x
-    x_formal[1::2] = x
+    x_staircase[::2] = x
+    x_staircase[1::2] = x
 
-    return x_formal, y_formal
+    return x_staircase, y_staircase
 
 
 def _ecdf_conf_int(
@@ -580,9 +632,9 @@ def _ecdf_conf_int(
     # Compute the confidence intervals
     ecdf_low, ecdf_high = np.percentile(np.array(bs_reps), ptiles, axis=0)
 
-    # Make them formal
-    _, ecdf_low = _to_formal(x=x_plot, y=ecdf_low)
-    x_plot, ecdf_high = _to_formal(x=x_plot, y=ecdf_high)
+    # Make them staircases
+    _, ecdf_low = _to_staircase(x=x_plot, y=ecdf_low)
+    x_plot, ecdf_high = _to_staircase(x=x_plot, y=ecdf_high)
 
     if complementary:
         p = utils._fill_between(
@@ -615,7 +667,7 @@ def _ecdf_y(data, complementary=False):
     Notes
     -----
     .. This only works for plotting an ECDF with points, not for formal
-       ECDFs
+       or staircase ECDFs
     """
     if complementary:
         return 1 - data.rank(method="first") / len(data) + 1 / len(data)
