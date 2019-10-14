@@ -7,6 +7,8 @@ import numpy as np
 import pandas as pd
 import numba
 
+import colorcet
+
 import bokeh.models
 import bokeh.palettes
 import bokeh.plotting
@@ -18,18 +20,7 @@ def ecdf(
     data=None,
     cats=None,
     val=None,
-    palette=[
-        "#4e79a7",
-        "#f28e2b",
-        "#e15759",
-        "#76b7b2",
-        "#59a14f",
-        "#edc948",
-        "#b07aa1",
-        "#ff9da7",
-        "#9c755f",
-        "#bab0ac",
-    ],
+    palette=colorcet.b_glasbey_category10,
     order=None,
     p=None,
     show_legend=True,
@@ -293,18 +284,7 @@ def histogram(
     data=None,
     cats=None,
     val=None,
-    palette=[
-        "#4e79a7",
-        "#f28e2b",
-        "#e15759",
-        "#76b7b2",
-        "#59a14f",
-        "#edc948",
-        "#b07aa1",
-        "#ff9da7",
-        "#9c755f",
-        "#bab0ac",
-    ],
+    palette=colorcet.b_glasbey_category10,
     order=None,
     show_legend=None,
     p=None,

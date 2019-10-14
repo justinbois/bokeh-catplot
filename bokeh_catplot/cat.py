@@ -3,6 +3,8 @@ import warnings
 import numpy as np
 import pandas as pd
 
+import colorcet
+
 import bokeh.models
 import bokeh.palettes
 import bokeh.plotting
@@ -14,18 +16,7 @@ def strip(
     data=None,
     cats=None,
     val=None,
-    palette=[
-        "#4e79a7",
-        "#f28e2b",
-        "#e15759",
-        "#76b7b2",
-        "#59a14f",
-        "#edc948",
-        "#b07aa1",
-        "#ff9da7",
-        "#9c755f",
-        "#bab0ac",
-    ],
+    palette=colorcet.b_glasbey_category10,
     order=None,
     p=None,
     show_legend=False,
@@ -202,18 +193,7 @@ def box(
     data=None,
     cats=None,
     val=None,
-    palette=[
-        "#4e79a7",
-        "#f28e2b",
-        "#e15759",
-        "#76b7b2",
-        "#59a14f",
-        "#edc948",
-        "#b07aa1",
-        "#ff9da7",
-        "#9c755f",
-        "#bab0ac",
-    ],
+    palette=colorcet.b_glasbey_category10,
     order=None,
     p=None,
     horizontal=False,
@@ -266,8 +246,8 @@ def box(
         If True, put caps on whiskers. If False, omit caps.
     display_points : bool, default True
         If True, display outliers and any other points that arise from
-        categories with fewer than `min_data` data points; otherwise 
-        suppress them. This should only be False when making an overlay 
+        categories with fewer than `min_data` data points; otherwise
+        suppress them. This should only be False when making an overlay
         with a strip plot.
     outlier_marker : str, default 'circle'
         Name of marker to be used in the plot (ignored if `formal` is
