@@ -16,7 +16,7 @@ def strip(
     data=None,
     cats=None,
     val=None,
-    palette=colorcet.b_glasbey_category10,
+    palette=None,
     order=None,
     p=None,
     show_legend=False,
@@ -44,7 +44,7 @@ def strip(
     palette : list of strings of hex colors, or single hex string
         If a list, color palette to use. If a single string representing
         a hex color, all glyphs are colored with that color. Default is
-        the default color cycle employed by Vega-Lite.
+        colorcet.b_glasbey_category10 from the colorcet package.
     order : list or None
         If not None, must be a list of unique group names when the input
         data frame is grouped by `cats`. The order of the list specifies
@@ -95,6 +95,9 @@ def strip(
     output : bokeh.plotting.Figure instance
         Plot populated with jitter plot.
     """
+    if palette is None:
+        palette = colorcet.b_glasbey_category10
+
     data, cats, show_legend = utils._data_cats(data, cats, show_legend)
 
     cats, cols = utils._check_cat_input(
@@ -193,7 +196,7 @@ def box(
     data=None,
     cats=None,
     val=None,
-    palette=colorcet.b_glasbey_category10,
+    palette=None,
     order=None,
     p=None,
     horizontal=False,
@@ -224,7 +227,7 @@ def box(
     palette : list of strings of hex colors, or single hex string
         If a list, color palette to use. If a single string representing
         a hex color, all glyphs are colored with that color. Default is
-        the default color cycle employed by Vega-Lite.
+        colorcet.b_glasbey_category10 from the colorcet package.
     order : list or None
         If not None, must be a list of unique group names when the input
         data frame is grouped by `cats`. The order of the list specifies
@@ -295,6 +298,8 @@ def box(
         warnings.warn(f'`display_outliers` is deprecated. Use `display_points`. Using `display_points={display_outliers} for this function call.', DeprecationWarning)
         display_points = display_outliers
 
+    if palette is None:
+        palette = colorcet.b_glasbey_category10
 
     data, cats, _ = utils._data_cats(data, cats, False)
 
