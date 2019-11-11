@@ -24,6 +24,7 @@ def ecdf(
     order=None,
     p=None,
     show_legend=True,
+    horizontal=False,
     tooltips=None,
     complementary=False,
     kind="collection",
@@ -61,6 +62,8 @@ def ecdf(
     p : bokeh.plotting.Figure instance, or None (default)
         If None, create a new figure. Otherwise, populate the existing
         figure `p`.
+    horizontal : bool, default False
+        If True, quantitative values are plotted on the y-axis.
     show_legend : bool, default False
         If True, display legend.
     tooltips : list of 2-tuples
@@ -163,14 +166,25 @@ def ecdf(
 
     y = "__ECCDF" if complementary else "__ECDF"
 
-    if "y_axis_label" not in kwargs:
-        if complementary:
-            kwargs["y_axis_label"] = "ECCDF"
-        else:
-            kwargs["y_axis_label"] = "ECDF"
+    if horizontal:
+        if "x_axis_label" not in kwargs:
+            if complementary:
+                kwargs["x_axis_label"] = "ECCDF"
+            else:
+                kwargs["x_axis_label"] = "ECDF"
+    else:
+        if "y_axis_label" not in kwargs:
+            if complementary:
+                kwargs["y_axis_label"] = "ECCDF"
+            else:
+                kwargs["y_axis_label"] = "ECDF"
 
-    if "x_axis_label" not in kwargs:
-        kwargs["x_axis_label"] = val
+    if horizontal:
+        if "y_axis_label" not in kwargs:
+            kwargs["y_axis_label"] = val
+    else:
+        if "x_axis_label" not in kwargs:
+            kwargs["x_axis_label"] = val
 
     if style in ["formal", "staircase"] and "line_width" not in line_kwargs:
         line_kwargs["line_width"] = 2
@@ -223,31 +237,36 @@ def ecdf(
         for i, (name, g) in enumerate(df.groupby(cats, sort=False)):
             if conf_int:
                 conf_int_kwargs["fill_color"] = palette[i % len(palette)]
-                conf_int_kwargs["legend"] = g["__label"].iloc[0]
+                conf_int_kwargs["legend_label"] = g["__label"].iloc[0]
                 p = _ecdf_conf_int(
                     p,
                     g[val],
                     complementary=complementary,
+                    horizontal=horizontal,
                     n_bs_reps=n_bs_reps,
                     ptiles=ptiles,
                     **conf_int_kwargs,
                 )
 
             marker_kwargs["color"] = palette[i % len(palette)]
-            marker_kwargs["legend"] = g["__label"].iloc[0]
+            marker_kwargs["legend_label"] = g["__label"].iloc[0]
             line_kwargs["color"] = palette[i % len(palette)]
-            line_kwargs["legend"] = g["__label"].iloc[0]
+            line_kwargs["legend_label"] = g["__label"].iloc[0]
             if style == "staircase":
                 p = _staircase_ecdf(
-                    p, data=g[val], complementary=complementary, line_kwargs=line_kwargs
+                    p, data=g[val], complementary=complementary, horizontal=horizontal, line_kwargs=line_kwargs
                 )
             elif style == "dots":
-                marker_fun(source=g, x=val, y=y, **marker_kwargs)
+                if horizontal:
+                    marker_fun(source=g, x=y, y=val, **marker_kwargs)
+                else:
+                    marker_fun(source=g, x=val, y=y, **marker_kwargs)
             elif style == "formal":
                 p = _formal_ecdf(
                     p,
                     data=g[val],
                     complementary=complementary,
+                    horizontal=horizontal,
                     marker_kwargs=marker_kwargs,
                     line_kwargs=line_kwargs,
                 )
@@ -265,6 +284,7 @@ def ecdf(
                 p,
                 df[val],
                 complementary=complementary,
+                horizontal=horizontal,
                 n_bs_reps=n_bs_reps,
                 ptiles=ptiles,
                 **conf_int_kwargs,
@@ -276,11 +296,14 @@ def ecdf(
         for i, (name, g) in enumerate(df.groupby(cats, sort=False)):
             source = bokeh.models.ColumnDataSource(g[cols])
             mkwargs = marker_kwargs
-            mkwargs["legend"] = g["__label"].iloc[0]
+            mkwargs["legend_label"] = g["__label"].iloc[0]
             mkwargs["color"] = palette[i % len(palette)]
-            marker_fun(source=source, x=val, y=y, **mkwargs)
+            if horizontal:
+                marker_fun(source=source, x=y, y=val, **mkwargs)
+            else:
+                marker_fun(source=source, x=val, y=y, **mkwargs)
 
-    return _ecdf_legend(p, complementary, click_policy, show_legend)
+    return _ecdf_legend(p, complementary, horizontal, click_policy, show_legend)
 
 
 def histogram(
@@ -290,6 +313,7 @@ def histogram(
     palette=None,
     order=None,
     show_legend=None,
+    horizontal=False,
     p=None,
     bins="freedman-diaconis",
     density=False,
@@ -325,6 +349,8 @@ def histogram(
         figure `p`.
     show_legend : bool, default False
         If True, display legend.
+    horizontal : bool, default False
+        If True, quantitative values are plotted on the y-axis.
     bins : int, array_like, or str, default 'freedman-diaconis'
         If int or array_like, setting for `bins` kwarg to be passed to
         `np.histogram()`. If 'exact', then each unique value in the
@@ -447,14 +473,14 @@ def histogram(
     for i, (name, g) in enumerate(df.groupby(cats, sort=False)):
         e0, f0 = _compute_histogram(g[val], bins, density)
         line_kwargs["color"] = palette[i % len(palette)]
-        p.line(e0, f0, **line_kwargs, legend=g["__label"].iloc[0])
+        p.line(e0, f0, **line_kwargs, legend_label=g["__label"].iloc[0])
 
         if kind == "step_filled":
             x2 = [e0.min(), e0.max()]
             y2 = [0, 0]
             fill_kwargs["color"] = palette[i % len(palette)]
             p = utils._fill_between(
-                p, e0, f0, x2, y2, legend=g["__label"].iloc[0], **fill_kwargs
+                p, e0, f0, x2, y2, legend_label=g["__label"].iloc[0], **fill_kwargs
             )
 
     if show_legend:
@@ -466,7 +492,7 @@ def histogram(
     return p
 
 
-def _staircase_ecdf(p, data, complementary=False, line_kwargs={}):
+def _staircase_ecdf(p, data, complementary=False, horizontal=False, line_kwargs={}):
     """
     Create a plot of an ECDF.
 
@@ -480,6 +506,8 @@ def _staircase_ecdf(p, data, complementary=False, line_kwargs={}):
     complementary : bool, default False
         If True, plot the empirical complementary cumulative
         distribution functon.
+    horizontal : bool, default False
+        If True, quantitative values are plotted on the y-axis.
     line_kwargs : dict
         kwargs to be passed into p.line and p.ray.
 
@@ -495,20 +523,31 @@ def _staircase_ecdf(p, data, complementary=False, line_kwargs={}):
     x, y = _ecdf_vals(data, True, complementary)
 
     # Line of steps
-    p.line(x, y, **line_kwargs)
+    if horizontal:
+        p.line(y, x, **line_kwargs)
+    else:
+        p.line(x, y, **line_kwargs)
 
     # Rays for ends
-    if complementary:
-        p.ray(x[0], 1, None, np.pi, **maker_kwargs)
-        p.ray(x[-1], 0, None, 0, **line_kwargs)
+    if horizontal:
+        if complementary:
+            p.ray(1, x[0], None, -np.pi/2, **line_kwargs)
+            p.ray(0, x[-1], None, np.pi/2, **line_kwargs)
+        else:
+            p.ray(0, x[0], None, -np.pi/2, **line_kwargs)
+            p.ray(1, x[-1], None, np.pi/2, **line_kwargs)
     else:
-        p.ray(x[0], 0, None, np.pi, **line_kwargs)
-        p.ray(x[-1], 1, None, 0, **line_kwargs)
+        if complementary:
+            p.ray(x[0], 1, None, np.pi, **line_kwargs)
+            p.ray(x[-1], 0, None, 0, **line_kwargs)
+        else:
+            p.ray(x[0], 0, None, np.pi, **line_kwargs)
+            p.ray(x[-1], 1, None, 0, **line_kwargs)
 
     return p
 
 
-def _formal_ecdf(p, data, complementary=False, marker_kwargs={}, line_kwargs={}):
+def _formal_ecdf(p, data, complementary=False, horizontal=False, marker_kwargs={}, line_kwargs={}):
     """
     Create a plot of an ECDF.
 
@@ -542,12 +581,20 @@ def _formal_ecdf(p, data, complementary=False, marker_kwargs={}, line_kwargs={})
     unfilled_kwargs = marker_kwargs.copy()
     unfilled_kwargs["fill_color"] = "white"
 
-    p.segment(x[:-1], y[:-1], x[1:], y[:-1], **line_kwargs)
-    p.ray(x[0], 0, angle=np.pi, length=0, **line_kwargs)
-    p.ray(x[-1], 1, angle=0, length=0, **line_kwargs)
-    p.circle(x, y, **marker_kwargs)
-    p.circle([0], [0], **unfilled_kwargs)
-    p.circle(x[1:], y[:-1], **unfilled_kwargs)
+    if horizontal:
+        p.segment(y[:-1], x[:-1], y[1:], x[:-1], **line_kwargs)
+        p.ray(0, x[0], angle=-np.pi/2, length=0, **line_kwargs)
+        p.ray(1, x[-1], angle=np.pi/2, length=0, **line_kwargs)
+        p.circle(y, x, **marker_kwargs)
+        p.circle([0], [0], **unfilled_kwargs)
+        p.circle(y[:-1], x[1:], **unfilled_kwargs)
+    else:
+        p.segment(x[:-1], y[:-1], x[1:], y[:-1], **line_kwargs)
+        p.ray(x[0], 0, angle=np.pi, length=0, **line_kwargs)
+        p.ray(x[-1], 1, angle=0, length=0, **line_kwargs)
+        p.circle(x, y, **marker_kwargs)
+        p.circle([0], [0], **unfilled_kwargs)
+        p.circle(x[1:], y[:-1], **unfilled_kwargs)
 
     return p
 
@@ -603,7 +650,7 @@ def _to_staircase(x, y):
 
 
 def _ecdf_conf_int(
-    p, data, complementary=False, n_bs_reps=1000, ptiles=[2.5, 97.5], **kwargs
+    p, data, complementary=False, horizontal=False, n_bs_reps=1000, ptiles=[2.5, 97.5], **kwargs
 ):
     """Add an ECDF confidence interval to a plot."""
     data = utils._convert_data(data)
@@ -622,14 +669,24 @@ def _ecdf_conf_int(
     _, ecdf_low = _to_staircase(x=x_plot, y=ecdf_low)
     x_plot, ecdf_high = _to_staircase(x=x_plot, y=ecdf_high)
 
-    if complementary:
-        p = utils._fill_between(
-            p, x1=x_plot, y1=1 - ecdf_low, x2=x_plot, y2=1 - ecdf_high, **kwargs
-        )
+    if horizontal:
+        if complementary:
+            p = utils._fill_between(
+                p, x1=1 - ecdf_low, y1=x_plot, x2=1 - ecdf_high, y2=x_plot, **kwargs
+            )
+        else:
+            p = utils._fill_between(
+                p, x1=ecdf_low, y1=x_plot, x2=ecdf_high, y2=x_plot, **kwargs
+            )
     else:
-        p = utils._fill_between(
-            p, x1=x_plot, y1=ecdf_low, x2=x_plot, y2=ecdf_high, **kwargs
-        )
+        if complementary:
+            p = utils._fill_between(
+                p, x1=x_plot, y1=1 - ecdf_low, x2=x_plot, y2=1 - ecdf_high, **kwargs
+            )
+        else:
+            p = utils._fill_between(
+                p, x1=x_plot, y1=ecdf_low, x2=x_plot, y2=ecdf_high, **kwargs
+            )
 
     return p
 
@@ -684,12 +741,18 @@ def _draw_ecdf_bootstrap(L, n, n_bs_reps=100000):
     return ys
 
 
-def _ecdf_legend(p, complementary, click_policy, show_legend):
+def _ecdf_legend(p, complementary, horizontal, click_policy, show_legend):
     if show_legend:
-        if complementary:
-            p.legend.location = "top_right"
+        if horizontal:
+            if complementary:
+                p.legend.location = "bottom_left"
+            else:
+                p.legend.location = "top_left"
         else:
-            p.legend.location = "bottom_right"
+            if complementary:
+                p.legend.location = "top_right"
+            else:
+                p.legend.location = "bottom_right"
         p.legend.click_policy = click_policy
     else:
         p.legend.visible = False

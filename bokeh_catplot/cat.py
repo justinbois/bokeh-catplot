@@ -167,8 +167,8 @@ def strip(
 
     source = _cat_source(data, cats, cols, color_column)
 
-    if show_legend and "legend" not in marker_kwargs:
-        marker_kwargs["legend"] = "__label"
+    if show_legend and "legend_label" not in marker_kwargs:
+        marker_kwargs["legend_label"] = "__label"
 
     if horizontal:
         x = val
