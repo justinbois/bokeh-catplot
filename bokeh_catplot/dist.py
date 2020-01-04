@@ -5,6 +5,7 @@ import warnings
 
 import numpy as np
 import pandas as pd
+import xarray
 import numba
 
 import colorcet
@@ -43,7 +44,7 @@ def ecdf(
     """
     Parameters
     ----------
-    data : Pandas DataFrame
+    data : Pandas DataFrame or 1D Numpy array
         DataFrame containing tidy data for plotting.
     cats : hashable or list of hastables
         Name of column(s) to use as categorical variable(s).
@@ -134,6 +135,20 @@ def ecdf(
 
     if palette is None:
         palette = colorcet.b_glasbey_category10
+
+    if type(data) == xarray.core.dataarray.DataArray:
+        if val is None:
+            if data.name is None:
+                val = 'x'
+            else:
+                val = data.name
+        data = pd.DataFrame({val: data.squeeze().values})
+    elif type(data) == np.ndarray:
+        if val is None:
+            val = 'x'
+        data = pd.DataFrame({val: data.squeeze()})
+        if cats is not None:
+            raise RuntimeError('If `data` is a Numpy array, `cats` must be None.')
 
     data, cats, show_legend = utils._data_cats(data, cats, show_legend)
 

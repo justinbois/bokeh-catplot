@@ -17,6 +17,7 @@ def _data_cats(data, cats, show_legend):
     data = pd.DataFrame(data)
 
     if cats is None:
+        data = data.copy()
         data["__dummy_cat"] = " "
         cats = "__dummy_cat"
         show_legend = False
