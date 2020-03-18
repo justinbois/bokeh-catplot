@@ -363,7 +363,7 @@ An empirical cumulative distribution function, or ECDF, is a convenient way to v
 
 > ECDF(x) = fraction of data points in X that are ≤ x.
 
-By default, ECDFs are colored by category. We could wish to display formal ECDFs (staircases).
+By default, ECDFs are colored by category. We could wish to display formal ECDFs (staircases) by setting the `style` kwarg.
 
 
 ```python
@@ -371,7 +371,7 @@ p = bokeh_catplot.ecdf(
     data=df,
     cats='origin',
     val='mpg',
-    formal=True,
+    style='staircase',
 )
 
 bokeh.io.show(p)
@@ -427,7 +427,7 @@ p = bokeh_catplot.ecdf(
     data=df,
     cats='origin',
     val='mpg',
-    formal=True,
+    style='staircase',
     conf_int=True,
 )
 
