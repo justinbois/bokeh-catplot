@@ -401,6 +401,19 @@ def histogram(
     """
     if palette is None:
         palette = colorcet.b_glasbey_category10
+    if type(data) == xarray.core.dataarray.DataArray:
+        if val is None:
+            if data.name is None:
+                val = 'x'
+            else:
+                val = data.name
+        data = pd.DataFrame({val: data.squeeze().values})
+    elif type(data) == np.ndarray:
+        if val is None:
+            val = 'x'
+        data = pd.DataFrame({val: data.squeeze()})
+        if cats is not None:
+            raise RuntimeError('If `data` is a Numpy array, `cats` must be None.')
 
     df, cats, show_legend = utils._data_cats(data, cats, show_legend)
 
@@ -451,7 +464,7 @@ def histogram(
             df["__sort"] = df.apply(lambda r: order.index(r[cats]), axis=1)
         df = df.sort_values(by="__sort")
 
-    if bins == "exact":
+    if type(bins) == str and bins == "exact":
         a = np.unique(df[val])
         if len(a) == 1:
             bins = np.array([a[0] - 0.5, a[0] + 0.5])
@@ -463,7 +476,7 @@ def histogram(
                     (a[-1] + (a[-1] - a[-2]) / 2,),
                 )
             )
-    elif bins == "integer":
+    elif type(bins) == str and  bins == "integer":
         if np.any(df[val] != np.round(df[val])):
             raise RuntimeError("'integer' bins chosen, but data are not integer.")
         bins = np.arange(df[val].min() - 1, df[val].max() + 1) + 0.5
@@ -776,9 +789,9 @@ def _ecdf_legend(p, complementary, horizontal, click_policy, show_legend):
 
 
 def _compute_histogram(data, bins, density):
-    if bins == "sqrt":
+    if  type(bins) == str and bins == "sqrt":
         bins = int(np.ceil(np.sqrt(len(data))))
-    elif bins == "freedman-diaconis":
+    elif  type(bins) == str and bins == "freedman-diaconis":
         h = 2 * (np.percentile(data, 75) - np.percentile(data, 25)) / np.cbrt(len(data))
         bins = int(np.ceil((data.max() - data.min()) / h))
 
