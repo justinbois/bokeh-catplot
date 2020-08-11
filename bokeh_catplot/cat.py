@@ -14,20 +14,20 @@ from . import utils
 
 def strip(
     data=None,
-    cats=None,
     val=None,
+    cats=None,
+    val_axis='x',
     palette=None,
     order=None,
     p=None,
     show_legend=False,
-    horizontal=False,
     color_column=None,
-    val_axis_type=None,
     tooltips=None,
     marker="circle",
     jitter=False,
     marker_kwargs=None,
     jitter_kwargs=None,
+    horizontal=False,
     **kwargs,
 ):
     """
@@ -37,10 +37,12 @@ def strip(
     ----------
     data : Pandas DataFrame
         DataFrame containing tidy data for plotting.
-    cats : hashable or list of hastables
-        Name of column(s) to use as categorical variable(s).
     val : hashable
         Name of column to use as value variable.
+    cats : hashable or list of hashables
+        Name of column(s) to use as categorical variable(s).
+    val_axis : str, either 'x' or 'y', default 'x'
+        Axis along which the quantitative value varies.
     palette : list of strings of hex colors, or single hex string
         If a list, color palette to use. If a single string representing
         a hex color, all glyphs are colored with that color. Default is
@@ -56,14 +58,9 @@ def strip(
         figure `p`.
     show_legend : bool, default False
         If True, display legend.
-    horizontal : bool, default False
-        If true, the categorical axis is the vertical axis.
     color_column : str, default None
         Column of `data` to use in determining color of glyphs. If None,
         then `cats` is used.
-    val_axis_type : str, default 'linear'
-        Type of scaling for the quantitative axis, either 'linear' or
-        'log'.
     tooltips : list of 2-tuples
         Specification for tooltips as per Bokeh specifications. For
         example, if we want `col1` and `col2` tooltips, we can use
@@ -86,6 +83,8 @@ def strip(
         `{'distribution': 'normal', 'width': 0.1}`. If the user
         specifies `{'distribution': 'uniform'}`, the `'width'` entry is
         adjusted to 0.4.
+    horizontal : bool, default True
+        Deprecated. Use `val_axis`.
     kwargs
         Any kwargs to be passed to `bokeh.plotting.figure()` when
         instantiating the figure.
@@ -93,12 +92,24 @@ def strip(
     Returns
     -------
     output : bokeh.plotting.Figure instance
-        Plot populated with jitter plot.
+        Plot populated with a strip plot.
     """
+    if val_axis not in ("x", "y"):
+        raise RuntimeError("Invalid `val_axis`. Must by 'x' or 'y'.")
+
+    if horizontal and val_axis != "x":
+        raise RuntimeError(
+            "`horizontal` and `val_axis` kwargs in disagreement. "
+            "Use `val_axis`; `horizontal` is deprecated."
+        )
+
+    # Set horizontal for use in hidden functions
+    horizontal = val_axis == "x"
+
     if palette is None:
         palette = colorcet.b_glasbey_category10
 
-    data, cats, show_legend = utils._data_cats(data, cats, show_legend)
+    data, val, cats, show_legend = utils._data_cats(data, val, cats, show_legend)
 
     cats, cols = utils._check_cat_input(
         data, cats, val, color_column, tooltips, palette, order, kwargs
@@ -108,16 +119,16 @@ def strip(
 
     if p is None:
         p, factors, color_factors = _cat_figure(
-            data, grouped, val, order, color_column, horizontal, val_axis_type, kwargs
+            data, grouped, val, order, color_column, horizontal, kwargs
         )
     else:
-        if type(p.x_range) == bokeh.models.ranges.FactorRange and horizontal:
+        if type(p.x_range) == bokeh.models.ranges.FactorRange and val_axis == 'x':
             raise RuntimeError(
-                "Attempting to add glyphs to vertical plot at `horizontal` is True."
+                "`val_axis` is 'x', but `p` has a categorical x-axis."
             )
-        elif type(p.y_range) == bokeh.models.ranges.FactorRange and not horizontal:
+        elif type(p.y_range) == bokeh.models.ranges.FactorRange and val_axis == 'y':
             raise RuntimeError(
-                "Attempting to add glyphs to horizontal plot at `horizontal` is False."
+                "`val_axis` is 'y', but `p` has a categorical y-axis."
             )
 
         _, factors, color_factors = _get_cat_range(
@@ -157,20 +168,20 @@ def strip(
     marker_fun = utils._get_marker(p, marker)
 
     if marker == "dash":
-        if "angle" not in marker_kwargs and horizontal:
+        if "angle" not in marker_kwargs and val_axis == 'x':
             marker_kwargs["angle"] = np.pi / 2
         if "size" not in marker_kwargs:
-            if horizontal:
+            if val_axis == 'x':
                 marker_kwargs["size"] = p.plot_height * 0.25 / len(grouped)
             else:
                 marker_kwargs["size"] = p.plot_width * 0.25 / len(grouped)
 
     source = _cat_source(data, cats, cols, color_column)
 
-    if show_legend and "legend_label" not in marker_kwargs:
-        marker_kwargs["legend_label"] = "__label"
+    if show_legend and "legend_field" not in marker_kwargs:
+        marker_kwargs["legend_field"] = "__label"
 
-    if horizontal:
+    if val_axis == 'x':
         x = val
         if jitter:
             jitter_kwargs["range"] = p.y_range
@@ -194,14 +205,12 @@ def strip(
 
 def box(
     data=None,
-    cats=None,
     val=None,
+    cats=None,
+    val_axis='x',
     palette=None,
     order=None,
     p=None,
-    horizontal=False,
-    val_axis_type=None,
-    box_width=0.4,
     whisker_caps=False,
     display_points=True,
     outlier_marker="circle",
@@ -211,6 +220,7 @@ def box(
     whisker_kwargs=None,
     outlier_kwargs=None,
     display_outliers=None,
+    horizontal=False,
     **kwargs,
 ):
     """
@@ -218,12 +228,16 @@ def box(
 
     Parameters
     ----------
-    data : Pandas DataFrame
-        DataFrame containing tidy data for plotting.
-    cats : hashable or list of hastables
-        Name of column(s) to use as categorical variable(s).
+    data : Pandas DataFrame, 1D Numpy array, or xarray
+        DataFrame containing tidy data for plotting.  If a Numpy array,
+        a single category is assumed and a box plot generated from
+        data.
     val : hashable
         Name of column to use as value variable.
+    cats : hashable or list of hashables
+        Name of column(s) to use as categorical variable(s).
+    val_axis : str, either 'x' or 'y', default 'x'
+        Axis along which the quantitative value varies.
     palette : list of strings of hex colors, or single hex string
         If a list, color palette to use. If a single string representing
         a hex color, all glyphs are colored with that color. Default is
@@ -237,14 +251,6 @@ def box(
     p : bokeh.plotting.Figure instance, or None (default)
         If None, create a new figure. Otherwise, populate the existing
         figure `p`.
-    horizontal : bool, default False
-        If true, the categorical axis is the vertical axis.
-    val_axis_type : str, default 'linear'
-        Type of scaling for the quantitative axis, either 'linear' or
-        'log'.
-    box_width : float, default 0.4
-        Width of the boxes. A value of 1 means that the boxes take the
-        entire space allotted.
     whisker_caps : bool, default False
         If True, put caps on whiskers. If False, omit caps.
     display_points : bool, default True
@@ -274,6 +280,8 @@ def box(
     outlier_kwargs : dict, default None
         A dictionary of kwargs to be passed into `p.circle()`
         when constructing the outliers for the box plot.
+    horizontal : bool, default True
+        Deprecated. Use `val_axis`.
     kwargs
         Kwargs that are passed to bokeh.plotting.figure() in contructing
         the figure.
@@ -285,15 +293,27 @@ def box(
 
     Notes
     -----
-    .. Uses the Tukey convention for box plots. The top and bottom of
-       the box are respectively the 75th and 25th percentiles of the
-       data. The line in the middle of the box is the median. The top
-       whisker extends to the maximum of the set of data points that are
-       less than 1.5 times the IQR beyond the top of the box, with an
-       analogous definition for the lower whisker. Data points not
-       between the ends of the whiskers are considered outliers and are
-       plotted as individual points.
+    Uses the Tukey convention for box plots. The top and bottom of
+    the box are respectively the 75th and 25th percentiles of the
+    data. The line in the middle of the box is the median. The top
+    whisker extends to the maximum of the set of data points that are
+    less than 1.5 times the IQR beyond the top of the box, with an
+    analogous definition for the lower whisker. Data points not
+    between the ends of the whiskers are considered outliers and are
+    plotted as individual points.
     """
+    if val_axis not in ("x", "y"):
+        raise RuntimeError("Invalid `val_axis`. Must by 'x' or 'y'.")
+
+    if horizontal and val_axis != "x":
+        raise RuntimeError(
+            "`horizontal` and `val_axis` kwargs in disagreement. "
+            "Use `val_axis`; `horizontal` is deprecated."
+        )
+
+    # Set horizontal for use in hidden functions
+    horizontal = val_axis == "x"
+
     if display_outliers is not None:
         warnings.warn(f'`display_outliers` is deprecated. Use `display_points`. Using `display_points={display_outliers} for this function call.', DeprecationWarning)
         display_points = display_outliers
@@ -301,7 +321,7 @@ def box(
     if palette is None:
         palette = colorcet.b_glasbey_category10
 
-    data, cats, _ = utils._data_cats(data, cats, False)
+    data, val, cats, _ = utils._data_cats(data, val, cats, False)
 
     cats, cols = utils._check_cat_input(
         data, cats, val, None, None, palette, order, box_kwargs
@@ -314,10 +334,13 @@ def box(
 
     if box_kwargs is None:
         box_kwargs = {"line_color": None}
+        box_width = 0.4
     elif type(box_kwargs) != dict:
         raise RuntimeError("`box_kwargs` must be a dict.")
-    elif "line_color" not in box_kwargs:
-        box_kwargs["line_color"] = None
+    else:
+        box_width = box_kwargs.pop("width", 0.4)
+        if "line_color" not in box_kwargs:
+            box_kwargs["line_color"] = None
 
     if whisker_kwargs is None:
         if "fill_color" in box_kwargs:
@@ -334,7 +357,7 @@ def box(
     elif "line_color" not in median_kwargs:
         median_kwargs["line_color"] = white
 
-    if horizontal:
+    if val_axis == 'x':
         if "height" in box_kwargs:
             warnings.warn("'height' entry in `box_kwargs` ignored; using `box_width`.")
             del box_kwargs["height"]
@@ -347,7 +370,7 @@ def box(
 
     if p is None:
         p, factors, color_factors = _cat_figure(
-            data, grouped, val, order, None, horizontal, val_axis_type, kwargs
+            data, grouped, val, order, None, horizontal, kwargs
         )
     else:
         _, factors, color_factors = _get_cat_range(
@@ -384,7 +407,7 @@ def box(
             "cat", palette=palette, factors=factors
         )
 
-    if horizontal:
+    if val_axis == 'x':
         p.segment(
             source=source_box,
             y0="cat",
@@ -522,7 +545,7 @@ def _get_cat_range(df, grouped, order, color_column, horizontal):
 
 
 def _cat_figure(
-    df, grouped, val, order, color_column, horizontal, val_axis_type, kwargs
+    df, grouped, val, order, color_column, horizontal, kwargs
 ):
     cat_range, factors, color_factors = _get_cat_range(
         df, grouped, order, color_column, horizontal
@@ -539,12 +562,6 @@ def _cat_figure(
             del kwargs["y_axis_type"]
 
         kwargs["y_range"] = cat_range
-
-        if "x_axis_type" in kwargs:
-            if val_axis_type is not None and val_axis_type != kwargs["x_axis_type"]:
-                raise RuntimeError("Mismatch in `val_axis_type` and `x_axis_type`")
-        elif val_axis_type is not None:
-            kwargs["x_axis_type"] = val_axis_type
     else:
         if "y_axis_label" not in kwargs:
             kwargs["y_axis_label"] = val
@@ -554,12 +571,6 @@ def _cat_figure(
             del kwargs["x_axis_type"]
 
         kwargs["x_range"] = cat_range
-
-        if "y_axis_type" in kwargs:
-            if val_axis_type is not None and val_axis_type != kwargs["y_axis_type"]:
-                raise RuntimeError("Mismatch in `val_axis_type` and `y_axis_type`")
-        elif val_axis_type is not None:
-            kwargs["y_axis_type"] = val_axis_type
 
     return bokeh.plotting.figure(**kwargs), factors, color_factors
 
@@ -598,8 +609,8 @@ def _box_and_whisker(data, min_data):
         bottom = data.quantile(0.25)
         top = data.quantile(0.75)
         iqr = top - bottom
-        top_whisker = data[data <= top + 1.5 * iqr].max()
-        bottom_whisker = data[data >= bottom - 1.5 * iqr].min()
+        top_whisker = max(data[data <= top + 1.5 * iqr].max(), top)
+        bottom_whisker = min(data[data >= bottom - 1.5 * iqr].min(), bottom)
         return pd.Series(
             {
                 "middle": middle,

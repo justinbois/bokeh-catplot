@@ -19,37 +19,42 @@ from . import utils
 
 def ecdf(
     data=None,
-    cats=None,
     val=None,
+    cats=None,
+    val_axis="x",
     palette=None,
     order=None,
     p=None,
     show_legend=True,
-    horizontal=False,
     tooltips=None,
     complementary=False,
     kind="collection",
     style="dots",
     conf_int=False,
     ptiles=[2.5, 97.5],
-    n_bs_reps=1000,
+    n_bs_reps=10000,
     click_policy="hide",
     marker="circle",
     marker_kwargs=None,
     line_kwargs=None,
     conf_int_kwargs=None,
-    formal=False,
+    horizontal=False,
     **kwargs,
 ):
     """
+    Make an ECDF plot.
+
     Parameters
     ----------
-    data : Pandas DataFrame or 1D Numpy array
-        DataFrame containing tidy data for plotting.
-    cats : hashable or list of hastables
-        Name of column(s) to use as categorical variable(s).
+    data : Pandas DataFrame or 1D Numpy array or xarray
+        DataFrame containing tidy data for plotting. If a Numpy array,
+        a single category is assumed and an ECDF generated from data.
     val : hashable
         Name of column to use as value variable.
+    cats : hashable or list of hashables
+        Name of column(s) to use as categorical variable(s).
+    val_axis : str, either 'x' or 'y', default 'x'
+        Axis along which the quantitative value varies.
     palette : list of strings of hex colors, or single hex string
         If a list, color palette to use. If a single string representing
         a hex color, all glyphs are colored with that color. Default is
@@ -63,8 +68,6 @@ def ecdf(
     p : bokeh.plotting.Figure instance, or None (default)
         If None, create a new figure. Otherwise, populate the existing
         figure `p`.
-    horizontal : bool, default False
-        If True, quantitative values are plotted on the y-axis.
     show_legend : bool, default False
         If True, display legend.
     tooltips : list of 2-tuples
@@ -108,7 +111,8 @@ def ecdf(
         Kwargs to be passed to `p.line()`, `p.ray()`, and `p.segment()`.
     conf_int_kwargs : dict
         kwargs to pass into patches depicting confidence intervals.
-    formal : deprecated, use `style`.
+    horizontal : bool, default False
+        Deprecated. Use `val_axis`.
     kwargs
         Any kwargs to be passed to `bokeh.plotting.figure()` when making
         the plot.
@@ -116,19 +120,19 @@ def ecdf(
     Returns
     -------
     output : bokeh.plotting.Figure instance
-        Plot populated with jitter plot or box plot.
+        Plot populated with ECDFs.
     """
-    if formal:
-        if style == "formal":
-            raise RuntimeError(
-                "`style` and `formal` kwargs in conflict. `formal` is deprecated. Use `style` instead."
-            )
-        else:
-            style = "staircase"
-            warnings.warn(
-                "`formal` is deprecated. Use `style='staircase'` instead.",
-                DeprecationWarning,
-            )
+    if val_axis not in ("x", "y"):
+        raise RuntimeError("Invalid `val_axis`. Must by 'x' or 'y'.")
+
+    if horizontal and val_axis != "y":
+        raise RuntimeError(
+            "`horizontal` and `val_axis` kwargs in disagreement. "
+            "Use `val_axis`; `horizontal` is deprecated."
+        )
+
+    # Set horizontal for use in private functions
+    horizontal = val_axis == "y"
 
     if style == "formal" and complementary:
         raise NotImplementedError("Complementary formal ECDFs not yet implemented.")
@@ -136,21 +140,7 @@ def ecdf(
     if palette is None:
         palette = colorcet.b_glasbey_category10
 
-    if type(data) == xarray.core.dataarray.DataArray:
-        if val is None:
-            if data.name is None:
-                val = 'x'
-            else:
-                val = data.name
-        data = pd.DataFrame({val: data.squeeze().values})
-    elif type(data) == np.ndarray:
-        if val is None:
-            val = 'x'
-        data = pd.DataFrame({val: data.squeeze()})
-        if cats is not None:
-            raise RuntimeError('If `data` is a Numpy array, `cats` must be None.')
-
-    data, cats, show_legend = utils._data_cats(data, cats, show_legend)
+    data, val, cats, show_legend = utils._data_cats(data, val, cats, show_legend)
 
     cats, cols = utils._check_cat_input(
         data, cats, val, None, tooltips, palette, order, marker_kwargs
@@ -181,7 +171,7 @@ def ecdf(
 
     y = "__ECCDF" if complementary else "__ECDF"
 
-    if horizontal:
+    if val_axis == "y":
         if "x_axis_label" not in kwargs:
             if complementary:
                 kwargs["x_axis_label"] = "ECCDF"
@@ -194,7 +184,7 @@ def ecdf(
             else:
                 kwargs["y_axis_label"] = "ECDF"
 
-    if horizontal:
+    if val_axis == "y":
         if "y_axis_label" not in kwargs:
             kwargs["y_axis_label"] = val
     else:
@@ -269,10 +259,14 @@ def ecdf(
             line_kwargs["legend_label"] = g["__label"].iloc[0]
             if style == "staircase":
                 p = _staircase_ecdf(
-                    p, data=g[val], complementary=complementary, horizontal=horizontal, line_kwargs=line_kwargs
+                    p,
+                    data=g[val],
+                    complementary=complementary,
+                    horizontal=horizontal,
+                    line_kwargs=line_kwargs,
                 )
             elif style == "dots":
-                if horizontal:
+                if val_axis == "y":
                     marker_fun(source=g, x=y, y=val, **marker_kwargs)
                 else:
                     marker_fun(source=g, x=val, y=y, **marker_kwargs)
@@ -313,7 +307,7 @@ def ecdf(
             mkwargs = marker_kwargs
             mkwargs["legend_label"] = g["__label"].iloc[0]
             mkwargs["color"] = palette[i % len(palette)]
-            if horizontal:
+            if val_axis == "y":
                 marker_fun(source=source, x=y, y=val, **mkwargs)
             else:
                 marker_fun(source=source, x=val, y=y, **mkwargs)
@@ -323,19 +317,20 @@ def ecdf(
 
 def histogram(
     data=None,
-    cats=None,
     val=None,
+    cats=None,
     palette=None,
     order=None,
-    show_legend=None,
-    horizontal=False,
+    val_axis="x",
     p=None,
+    show_legend=None,
     bins="freedman-diaconis",
     density=False,
     kind="step_filled",
     click_policy="hide",
     line_kwargs=None,
     fill_kwargs=None,
+    horizontal=False,
     **kwargs,
 ):
     """
@@ -343,12 +338,16 @@ def histogram(
 
     Parameters
     ----------
-    data : Pandas DataFrame
-        DataFrame containing tidy data for plotting.
-    cats : hashable or list of hastables
-        Name of column(s) to use as categorical variable(s).
+    data : Pandas DataFrame, 1D Numpy array, or xarray
+        DataFrame containing tidy data for plotting.  If a Numpy array,
+        a single category is assumed and a histogram generated from
+        data.
     val : hashable
         Name of column to use as value variable.
+    cats : hashable or list of hashables
+        Name of column(s) to use as categorical variable(s).
+    val_axis : str, either 'x' or 'y', default 'x'
+        Axis along which the quantitative value varies.
     palette : list of strings of hex colors, or single hex string
         If a list, color palette to use. If a single string representing
         a hex color, all glyphs are colored with that color. Default is
@@ -364,8 +363,6 @@ def histogram(
         figure `p`.
     show_legend : bool, default False
         If True, display legend.
-    horizontal : bool, default False
-        If True, quantitative values are plotted on the y-axis.
     bins : int, array_like, or str, default 'freedman-diaconis'
         If int or array_like, setting for `bins` kwarg to be passed to
         `np.histogram()`. If 'exact', then each unique value in the
@@ -390,6 +387,8 @@ def histogram(
         Keyword arguments to pass to `p.patch()` when making the fill
         for the step-filled histogram. Ignored if `kind = 'step'`. By
         default {"fill_alpha": 0.3, "line_alpha": 0}.
+    horizontal : bool, default False
+        Deprecated. Use `val_axis`.
     kwargs
         Any kwargs to be passed to `bokeh.plotting.figure()` when making
         the plot.
@@ -399,23 +398,19 @@ def histogram(
     output : Bokeh figure
         Figure populated with histograms.
     """
+    if val_axis not in ("x", "y"):
+        raise RuntimeError("Invalid `val_axis`. Must by 'x' or 'y'.")
+
+    if horizontal and val_axis != "y":
+        raise RuntimeError(
+            "`horizontal` and `val_axis` kwargs in disagreement. "
+            "Use `val_axis`; `horizontal` is deprecated."
+        )
+
     if palette is None:
         palette = colorcet.b_glasbey_category10
-    if type(data) == xarray.core.dataarray.DataArray:
-        if val is None:
-            if data.name is None:
-                val = 'x'
-            else:
-                val = data.name
-        data = pd.DataFrame({val: data.squeeze().values})
-    elif type(data) == np.ndarray:
-        if val is None:
-            val = 'x'
-        data = pd.DataFrame({val: data.squeeze()})
-        if cats is not None:
-            raise RuntimeError('If `data` is a Numpy array, `cats` must be None.')
 
-    df, cats, show_legend = utils._data_cats(data, cats, show_legend)
+    df, val, cats, show_legend = utils._data_cats(data, val, cats, show_legend)
 
     if show_legend is None:
         if cats is None:
@@ -476,7 +471,7 @@ def histogram(
                     (a[-1] + (a[-1] - a[-2]) / 2,),
                 )
             )
-    elif type(bins) == str and  bins == "integer":
+    elif type(bins) == str and bins == "integer":
         if np.any(df[val] != np.round(df[val])):
             raise RuntimeError("'integer' bins chosen, but data are not integer.")
         bins = np.arange(df[val].min() - 1, df[val].max() + 1) + 0.5
@@ -501,18 +496,30 @@ def histogram(
     for i, (name, g) in enumerate(df.groupby(cats, sort=False)):
         e0, f0 = _compute_histogram(g[val], bins, density)
         line_kwargs["color"] = palette[i % len(palette)]
-        p.line(e0, f0, **line_kwargs, legend_label=g["__label"].iloc[0])
+
+        if val_axis == "y":
+            p.line(f0, e0, **line_kwargs, legend_label=g["__label"].iloc[0])
+        else:
+            p.line(e0, f0, **line_kwargs, legend_label=g["__label"].iloc[0])
 
         if kind == "step_filled":
             x2 = [e0.min(), e0.max()]
             y2 = [0, 0]
             fill_kwargs["color"] = palette[i % len(palette)]
-            p = utils._fill_between(
-                p, e0, f0, x2, y2, legend_label=g["__label"].iloc[0], **fill_kwargs
-            )
+            if val_axis == "y":
+                p = utils._fill_between(
+                    p, f0, e0, y2, x2, legend_label=g["__label"].iloc[0], **fill_kwargs
+                )
+            else:
+                p = utils._fill_between(
+                    p, e0, f0, x2, y2, legend_label=g["__label"].iloc[0], **fill_kwargs
+                )
 
     if show_legend:
-        p.legend.location = "top_right"
+        if val_axis == "y":
+            p.legend.location = "bottom_right"
+        else:
+            p.legend.location = "top_right"
         p.legend.click_policy = click_policy
     else:
         p.legend.visible = False
@@ -559,11 +566,11 @@ def _staircase_ecdf(p, data, complementary=False, horizontal=False, line_kwargs=
     # Rays for ends
     if horizontal:
         if complementary:
-            p.ray(1, x[0], None, -np.pi/2, **line_kwargs)
-            p.ray(0, x[-1], None, np.pi/2, **line_kwargs)
+            p.ray(1, x[0], None, -np.pi / 2, **line_kwargs)
+            p.ray(0, x[-1], None, np.pi / 2, **line_kwargs)
         else:
-            p.ray(0, x[0], None, -np.pi/2, **line_kwargs)
-            p.ray(1, x[-1], None, np.pi/2, **line_kwargs)
+            p.ray(0, x[0], None, -np.pi / 2, **line_kwargs)
+            p.ray(1, x[-1], None, np.pi / 2, **line_kwargs)
     else:
         if complementary:
             p.ray(x[0], 1, None, np.pi, **line_kwargs)
@@ -575,7 +582,9 @@ def _staircase_ecdf(p, data, complementary=False, horizontal=False, line_kwargs=
     return p
 
 
-def _formal_ecdf(p, data, complementary=False, horizontal=False, marker_kwargs={}, line_kwargs={}):
+def _formal_ecdf(
+    p, data, complementary=False, horizontal=False, marker_kwargs={}, line_kwargs={}
+):
     """
     Create a plot of an ECDF.
 
@@ -611,8 +620,8 @@ def _formal_ecdf(p, data, complementary=False, horizontal=False, marker_kwargs={
 
     if horizontal:
         p.segment(y[:-1], x[:-1], y[1:], x[:-1], **line_kwargs)
-        p.ray(0, x[0], angle=-np.pi/2, length=0, **line_kwargs)
-        p.ray(1, x[-1], angle=np.pi/2, length=0, **line_kwargs)
+        p.ray(0, x[0], angle=-np.pi / 2, length=0, **line_kwargs)
+        p.ray(1, x[-1], angle=np.pi / 2, length=0, **line_kwargs)
         p.circle(y, x, **marker_kwargs)
         p.circle([0], [0], **unfilled_kwargs)
         p.circle(y[:-1], x[1:], **unfilled_kwargs)
@@ -678,7 +687,13 @@ def _to_staircase(x, y):
 
 
 def _ecdf_conf_int(
-    p, data, complementary=False, horizontal=False, n_bs_reps=1000, ptiles=[2.5, 97.5], **kwargs
+    p,
+    data,
+    complementary=False,
+    horizontal=False,
+    n_bs_reps=1000,
+    ptiles=[2.5, 97.5],
+    **kwargs,
 ):
     """Add an ECDF confidence interval to a plot."""
     data = utils._convert_data(data)
@@ -789,9 +804,9 @@ def _ecdf_legend(p, complementary, horizontal, click_policy, show_legend):
 
 
 def _compute_histogram(data, bins, density):
-    if  type(bins) == str and bins == "sqrt":
+    if type(bins) == str and bins == "sqrt":
         bins = int(np.ceil(np.sqrt(len(data))))
-    elif  type(bins) == str and bins == "freedman-diaconis":
+    elif type(bins) == str and bins == "freedman-diaconis":
         h = 2 * (np.percentile(data, 75) - np.percentile(data, 25)) / np.cbrt(len(data))
         bins = int(np.ceil((data.max() - data.min()) / h))
 

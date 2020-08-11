@@ -2,6 +2,7 @@
 
 import numpy as np
 import pandas as pd
+import xarray
 
 
 def _fig_dimensions(kwargs):
@@ -13,8 +14,20 @@ def _fig_dimensions(kwargs):
     return kwargs
 
 
-def _data_cats(data, cats, show_legend):
-    data = pd.DataFrame(data)
+def _data_cats(data, val, cats, show_legend):
+    if type(data) == xarray.core.dataarray.DataArray:
+        if val is None:
+            if data.name is None:
+                val = "x"
+            else:
+                val = data.name
+        data = pd.DataFrame({val: data.squeeze().values})
+    elif type(data) == np.ndarray:
+        if val is None:
+            val = "x"
+        data = pd.DataFrame({val: data.squeeze()})
+        if cats is not None:
+            raise RuntimeError("If `data` is a Numpy array, `cats` must be None.")
 
     if cats is None:
         data = data.copy()
@@ -22,7 +35,7 @@ def _data_cats(data, cats, show_legend):
         cats = "__dummy_cat"
         show_legend = False
 
-    return data, cats, show_legend
+    return data, val, cats, show_legend
 
 
 def _fill_between(p, x1=None, y1=None, x2=None, y2=None, **kwargs):
