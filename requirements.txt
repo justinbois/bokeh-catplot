@@ -1,4 +1,5 @@
 numpy
+xarray
 numba
 pandas
 bokeh
