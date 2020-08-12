@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 from codecs import open
 from os import path
 
-__version__ = '0.1.8'
+__version__ = '0.1.9'
 
 here = path.abspath(path.dirname(__file__))
 
@@ -16,13 +16,13 @@ dependency_links = [x.strip().replace('git+', '') for x in all_reqs if x.startsw
 setup(
     name='bokeh_catplot',
     version=__version__,
-    description='Utility to generate plots with categorical variables using Bokeh.',
-    long_description='Utility to generate plots with categorical variables using Bokeh.',
+    description='DEPRECATED. Utility to generate plots with categorical variables using Bokeh.',
+    long_description='DEPRECATED. Utility to generate plots with categorical variables using Bokeh.',
     url='https://github.com/justinbois/bokeh-catplot',
     download_url='https://github.com/justinbois/bokeh-catplot/tarball/' + __version__,
     license='BSD',
     classifiers=[
-      'Development Status :: 3 - Alpha',
+      'Development Status :: 7 - Inactive',
       'Intended Audience :: Developers',
       'Programming Language :: Python :: 3',
     ],
