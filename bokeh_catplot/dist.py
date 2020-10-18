@@ -254,9 +254,11 @@ def ecdf(
                 )
 
             marker_kwargs["color"] = palette[i % len(palette)]
-            marker_kwargs["legend_label"] = g["__label"].iloc[0]
+            if "legend_label" not in marker_kwargs:
+                marker_kwargs["legend_label"] = g["__label"].iloc[0]
             line_kwargs["color"] = palette[i % len(palette)]
-            line_kwargs["legend_label"] = g["__label"].iloc[0]
+            if "legend_label" not in line_kwargs:
+                line_kwargs["legend_label"] = g["__label"].iloc[0]
             if style == "staircase":
                 p = _staircase_ecdf(
                     p,
@@ -305,7 +307,8 @@ def ecdf(
         for i, (name, g) in enumerate(df.groupby(cats, sort=False)):
             source = bokeh.models.ColumnDataSource(g[cols])
             mkwargs = marker_kwargs
-            mkwargs["legend_label"] = g["__label"].iloc[0]
+            if "legend_label" not in mkwargs:
+                mkwargs["legend_label"] = g["__label"].iloc[0]
             mkwargs["color"] = palette[i % len(palette)]
             if val_axis == "y":
                 marker_fun(source=source, x=y, y=val, **mkwargs)
