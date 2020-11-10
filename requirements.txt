@@ -4,3 +4,4 @@ numba
 pandas
 bokeh
 colorcet
+xarray
